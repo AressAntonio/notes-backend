@@ -1,30 +1,7 @@
-//creando servidor web simple
+//CONEXION CON MONGO.DB
+require('dotenv').config()
 
-//const http = require('http');
-
-let notes = [
-    {
-      id: 1,
-      content: "HTML is easy",
-      important: true
-    },
-    {
-      id: 2,
-      content: "Browser can execute only JavaScript",
-      important: false
-    },
-    {
-      id: 3,
-      content: "GET and POST are the most important methods of HTTP protocol",
-      important: true
-    }
-  ];
-
-/*const app = http.createServer((request, response)=>{
-
-    response.writeHead(200, {'Content-Type': 'application/json'});
-    response.end(JSON.stringify(notes));
-});*/
+const Note = require('./models/note');
 
 const requestLogger = (request, response, next) => {
     console.log('Method:', request.method)
@@ -51,32 +28,27 @@ app.get('/', (request, response)=>{
 
 //TRAER TODAS LAS NOTAS
 app.get('/api/notes', (request, response)=>{
-    response.json(notes);
+    Note.find({}).then(notes =>{
+        response.json(notes);
+    })
 });
 
 //TRAER NOTA ESPECIFICA POR ID 
 app.get('/api/notes/:id', (request, response)=>{
-    const id = Number(request.params.id);
-    const note = notes.find(note => note.id === id);
-
-    if(note){
+    Note.findById(request.params.id).then(note =>{
         response.json(note);
-    }else{
-        response.status(404).end();
-    };
-    console.log(note);
-    response.json(note);
+    })
 });
 
 //CREANDO NUEVO OBJETO
-const generateId = ()=>{
+/*const generateId = ()=>{
 
     const maxId = notes.length > 0
         ? Math.max(...notes.map(n => n.id))
         : 0;
     
     return maxId + 1;
-}
+}*/
 app.post('/api/notes', (request, response)=>{
 
     const body = request.body;
@@ -87,23 +59,23 @@ app.post('/api/notes', (request, response)=>{
         })
     };
 
-    const note ={
-
-        id: generateId(),
+    const note = new Note({
         content: body.content,
-        important: Boolean(body.important) || false,
-        
-    };
+        important: body.important || false,
+    })
 
-    notes = notes.concat(note);
-    response.json(note)
+    note.save().then(savedNote =>{
+        response.json(savedNote);
+    })
     
 });
 
 //BORRAR RECURSO
 app.delete('/api/notes/:id', (request, response)=>{
+
+    
     const id = Number(request.params.id);
-    notes = notes.filter(note => note.id !== id);
+    Note = notes.filter(note => note.id !== id);
 
     response.status(204).end();
 });
@@ -115,6 +87,11 @@ const unknownEndpoint = (request, response) => {
 app.use(unknownEndpoint)
 
 //definicion de puerto para levantar servidor web
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT
 app.listen(PORT);
 console.log(`Server runnig on port http://localhost:${PORT}`);
+
+
+
+
+
