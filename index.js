@@ -31,6 +31,10 @@ app.get('/api/notes', (request, response)=>{
     Note.find({}).then(notes =>{
         response.json(notes);
     })
+    .catch(error => {
+        console.error(error);
+        response.status(500).json({ error: 'Error al eliminar la nota' });
+    });
 });
 
 //TRAER NOTA ESPECIFICA POR ID 
@@ -38,6 +42,10 @@ app.get('/api/notes/:id', (request, response)=>{
     Note.findById(request.params.id).then(note =>{
         response.json(note);
     })
+    .catch(error => {
+        console.error(error);
+        response.status(500).json({ error: 'Error al eliminar la nota' });
+    });
 });
 
 //CREANDO NUEVO OBJETO
@@ -67,17 +75,38 @@ app.post('/api/notes', (request, response)=>{
     note.save().then(savedNote =>{
         response.json(savedNote);
     })
+    .catch(error => {
+        console.error(error);
+        response.status(500).json({ error: 'Error al eliminar la nota' });
+    });
     
 });
 
 //BORRAR RECURSO
 app.delete('/api/notes/:id', (request, response)=>{
-
     
-    const id = Number(request.params.id);
-    Note = notes.filter(note => note.id !== id);
+    Note.deleteOne({ _id: request.params.id })
+        .then(() => {
+            // Obtén todas las notas restantes
+            Note.find()
+                .then(notes => {
+                    // Filtra la lista de notas para eliminar la que se eliminó
+                    const filteredNotes = notes.filter(note => note._id.toString() !== request.params.id);
 
-    response.status(204).end();
+                    // Envía la lista filtrada al frontend
+                    response.status(200).json(filteredNotes);
+                })
+                .catch(error => {
+                    console.error(error);
+                    response.status(500).json({ error: 'Error al obtener las notas' });
+                });
+        })
+        .catch(error => {
+            console.error(error);
+            response.status(500).json({ error: 'Error al eliminar la nota' });
+        });
+    
+    
 });
 
 const unknownEndpoint = (request, response) => {
