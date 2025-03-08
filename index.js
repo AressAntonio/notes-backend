@@ -1,15 +1,7 @@
 //CONEXION CON MONGO.DB
-require('dotenv').config()
+require('dotenv').config() //importando variable de entorno
 
-const Note = require('./models/note');
-
-const requestLogger = (request, response, next) => {
-    console.log('Method:', request.method)
-    console.log('Path:  ', request.path)
-    console.log('Body:  ', request.body)
-    console.log('---')
-    next()
-}
+const Note = require('./models/note'); //importando DB
 
 //CREANDO SERVIDOR WEB CON EXPRESS
 const express = require('express');
@@ -20,32 +12,67 @@ app.use(express.static('dist'));
 app.use(requestLogger);
 app.use(cors());
 
+
+//middleware controlador de peticiones a endPoints en consola
+const requestLogger = (request, response, next) => {
+    console.log('Method:', request.method)
+    console.log('Path:  ', request.path)
+    console.log('Body:  ', request.body)
+    console.log('---')
+    next()
+};
+
+//middleware controlador de solicitudes de endPoint desconocidos
+const unknownEndpoint = (request, response) => {
+    response.status(404).send({ error: 'unknown endpoint' })
+};
+
+//middleware controlador de errores
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+  
+    if (error.name === 'CastError') {
+      return response.status(400).send({ error: 'malformatted id' })
+    } 
+  
+    next(error)
+};
+
+
 //Traer ruta principal de la API
 app.get('/', (request, response)=>{
 
     response.send('<h1>Hello World!</h1><br><a href="http://localhost:3001/api/notes">NOTES..</a>');
 });
 
+
+
 //TRAER TODAS LAS NOTAS
-app.get('/api/notes', (request, response)=>{
+app.get('/api/notes', (request, response, next)=>{
     Note.find({}).then(notes =>{
-        response.json(notes);
+
+        if(notes){
+            response.json(notes);
+        }else{
+            response.status(404).end();
+        };
+        
     })
-    .catch(error => {
-        console.error(error);
-        response.status(500).json({ error: 'Error al eliminar la nota' });
-    });
+    .catch(error => next(error));
 });
 
 //TRAER NOTA ESPECIFICA POR ID 
-app.get('/api/notes/:id', (request, response)=>{
+app.get('/api/notes/:id', (request, response, next)=>{
     Note.findById(request.params.id).then(note =>{
-        response.json(note);
+
+        if(note){
+            response.json(note);
+        }else{
+            response.status(404).end();
+        }
+        
     })
-    .catch(error => {
-        console.error(error);
-        response.status(500).json({ error: 'Error al eliminar la nota' });
-    });
+    .catch(error => next(error));
 });
 
 //CREANDO NUEVO OBJETO
@@ -57,7 +84,7 @@ app.get('/api/notes/:id', (request, response)=>{
     
     return maxId + 1;
 }*/
-app.post('/api/notes', (request, response)=>{
+app.post('/api/notes', (request, response, next)=>{
 
     const body = request.body;
 
@@ -75,15 +102,13 @@ app.post('/api/notes', (request, response)=>{
     note.save().then(savedNote =>{
         response.json(savedNote);
     })
-    .catch(error => {
-        console.error(error);
-        response.status(500).json({ error: 'Error al eliminar la nota' });
-    });
+    .catch(error => next(error));
     
 });
 
+
 //BORRAR RECURSO
-app.delete('/api/notes/:id', (request, response)=>{
+app.delete('/api/notes/:id', (request, response, next)=>{
     
     Note.deleteOne({ _id: request.params.id })
         .then(() => {
@@ -96,10 +121,7 @@ app.delete('/api/notes/:id', (request, response)=>{
                     // Envía la lista filtrada al frontend
                     response.status(200).json(filteredNotes);
                 })
-                .catch(error => {
-                    console.error(error);
-                    response.status(500).json({ error: 'Error al obtener las notas' });
-                });
+                .catch(error => next(error));
         })
         .catch(error => {
             console.error(error);
@@ -109,11 +131,26 @@ app.delete('/api/notes/:id', (request, response)=>{
     
 });
 
-const unknownEndpoint = (request, response) => {
-    response.status(404).send({ error: 'unknown endpoint' })
-}
-  
-app.use(unknownEndpoint)
+//UPDATE RECURSO
+app.put('/api/notes/:id', (request, response, next)=>{
+
+    const body = request.body;
+
+    const note ={
+        content: body.content,
+        important: body.important,
+    };
+
+    Note.findByIdAndUpdate(request.params.id, note, {new: true})
+        .then(updateNote =>{
+            response.json(updateNote);
+        })
+        .catch(error => next(error));
+})
+
+
+app.use(errorHandler);
+app.use(unknownEndpoint);
 
 //definicion de puerto para levantar servidor web
 const PORT = process.env.PORT
