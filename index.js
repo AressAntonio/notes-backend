@@ -3,16 +3,6 @@ require('dotenv').config() //importando variable de entorno
 
 const Note = require('./models/note'); //importando DB
 
-//CREANDO SERVIDOR WEB CON EXPRESS
-const express = require('express');
-const cors = require('cors');
-const app = express();
-app.use(express.json());
-app.use(express.static('dist'));
-app.use(requestLogger);
-app.use(cors());
-
-
 //middleware controlador de peticiones a endPoints en consola
 const requestLogger = (request, response, next) => {
     console.log('Method:', request.method)
@@ -21,6 +11,15 @@ const requestLogger = (request, response, next) => {
     console.log('---')
     next()
 };
+
+//CREANDO SERVIDOR WEB CON EXPRESS
+const express = require('express');
+const cors = require('cors');
+const app = express();
+app.use(express.json());
+app.use(requestLogger);
+app.use(express.static('dist'));
+app.use(cors());
 
 //middleware controlador de solicitudes de endPoint desconocidos
 const unknownEndpoint = (request, response) => {
@@ -33,7 +32,9 @@ const errorHandler = (error, request, response, next) => {
   
     if (error.name === 'CastError') {
       return response.status(400).send({ error: 'malformatted id' })
-    } 
+    } else if(error.name === 'ValidationError'){
+        return response.status(400).json({error: error.message})
+    }
   
     next(error)
 };
@@ -88,11 +89,11 @@ app.post('/api/notes', (request, response, next)=>{
 
     const body = request.body;
 
-    if(!body.content){
+    /*if(!body.content){
         return response.status(400).json({
             error: 'content missing'
         })
-    };
+    };*/
 
     const note = new Note({
         content: body.content,
@@ -134,14 +135,14 @@ app.delete('/api/notes/:id', (request, response, next)=>{
 //UPDATE RECURSO
 app.put('/api/notes/:id', (request, response, next)=>{
 
-    const body = request.body;
+    const {content, important} = request.body;
 
-    const note ={
+    /*const note ={
         content: body.content,
         important: body.important,
-    };
+    };*/
 
-    Note.findByIdAndUpdate(request.params.id, note, {new: true})
+    Note.findByIdAndUpdate(request.params.id, {content, important}, {new: true, runValidators: true, context: 'query'})
         .then(updateNote =>{
             response.json(updateNote);
         })
@@ -149,10 +150,12 @@ app.put('/api/notes/:id', (request, response, next)=>{
 })
 
 
-app.use(errorHandler);
+
 app.use(unknownEndpoint);
+app.use(errorHandler);
 
 //definicion de puerto para levantar servidor web
+// eslint-disable-next-line no-undef
 const PORT = process.env.PORT
 app.listen(PORT);
 console.log(`Server runnig on port http://localhost:${PORT}`);

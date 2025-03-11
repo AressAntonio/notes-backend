@@ -1,4 +1,6 @@
+/* eslint-disable no-undef */
 const mongoose = require('mongoose');
+
 
 if(process.argv.length < 3){
     console.log('give password as argument');
@@ -30,13 +32,13 @@ noteSchema.set('toJSON', {
 
 const Note = mongoose.model('Note', noteSchema);
 
-const note = new Note({
+/*const note = new Note({
     content: 'Callback-functions suck',
     important: true,
-});
+});*/
 
 //CREA UNA NUEVA NOTA
-/*note.save().then(result =>{
+/*note.save().then(() =>{
     console.log('note saved!');
     mongoose.connection.close();
 });*/
